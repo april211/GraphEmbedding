@@ -43,6 +43,6 @@ def partition_list(vertices, workers):
 
 def partition_num(num, workers):
     if num % workers == 0:
-        return [num // workers] * workers
+        return [num // workers] * workers       # 尝试向每个进程平分任务
     else:
         return [num // workers] * workers + [num % workers]

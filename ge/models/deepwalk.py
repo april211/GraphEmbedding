@@ -24,29 +24,34 @@ from ..walker import RandomWalker
 
 class DeepWalk:
     def __init__(self, graph, walk_length, num_walks, workers=1):
-
+        
         self.graph = graph
         self.w2v_model = None
         self._embeddings = {}
 
         self.walker = RandomWalker(
-            graph, p=1, q=1, )
-        self.sentences = self.walker.simulate_walks(
-            num_walks=num_walks, walk_length=walk_length, workers=workers, verbose=1)
+            graph, p=1, q=1
+        )
 
-    def train(self, embed_size=128, window_size=5, workers=3, iter=5, **kwargs):
+        # 获取由图生成的“句子”
+        # num_walks 控制每个起始节点产生的 walks 个数
+        self.sentences = self.walker.simulate_walks(
+            num_walks=num_walks, walk_length=walk_length, workers=workers, verbose=1
+        )
+
+    def train(self, embed_size=128, window_size=5, workers=1, iter=5, **kwargs):
 
         kwargs["sentences"] = self.sentences
         kwargs["min_count"] = kwargs.get("min_count", 0)
         kwargs["vector_size"] = embed_size
-        kwargs["sg"] = 1  # skip gram
-        kwargs["hs"] = 1  # deepwalk use Hierarchical Softmax
+        kwargs["sg"] = 1  # Skip-Gram
+        kwargs["hs"] = 1  # Because Deep Walk uses Hierarchical Softmax.
         kwargs["workers"] = workers
         kwargs["window"] = window_size
         kwargs["epochs"] = iter
 
         print("Learning embedding vectors...")
-        model = Word2Vec(**kwargs)
+        model = Word2Vec(**kwargs)                      # 完成 embedding 的训练
         print("Learning embedding vectors done!")
 
         self.w2v_model = model
@@ -62,3 +67,4 @@ class DeepWalk:
             self._embeddings[word] = self.w2v_model.wv[word]
 
         return self._embeddings
+

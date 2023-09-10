@@ -21,7 +21,7 @@ import math
 import random
 
 import numpy as np
-from deepctr.layers.utils import reduce_sum
+from deepctr.layers.utils import reduce_sum             # TODO *** 这一句会在多线程下报错 ***
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.layers import Embedding, Input, Lambda
 from tensorflow.python.keras.models import Model

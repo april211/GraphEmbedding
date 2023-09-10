@@ -24,16 +24,49 @@ class RandomWalker:
 
     def deepwalk_walk(self, walk_length, start_node):
 
-        walk = [start_node]
+        walk = [start_node]                                     # 起始状态只有一个节点，即起始节点
 
         while len(walk) < walk_length:
-            cur = walk[-1]
+            cur = walk[-1]                                      # 跳转到 walk 上的最后一个节点作为当前节点
             cur_nbrs = list(self.G.neighbors(cur))
             if len(cur_nbrs) > 0:
-                walk.append(random.choice(cur_nbrs))
+                walk.append(random.choice(cur_nbrs))            # 随机选择一个邻居节点，作为 walk 的下一个节点
             else:
                 break
         return walk
+    
+    def _simulate_walks(self, nodes, num_walks, walk_length):
+        walks = []
+        for _ in range(num_walks):              # num_walks 控制每个起始节点产生的 walks 个数
+            random.shuffle(nodes)               # 打乱所有的图节点，保证完全随机
+            for v in nodes:
+                if self.p == 1 and self.q == 1:
+                    walks.append(self.deepwalk_walk(
+                        walk_length=walk_length, start_node=v))
+                elif self.use_rejection_sampling:
+                    walks.append(self.node2vec_walk2(
+                        walk_length=walk_length, start_node=v))
+                else:
+                    walks.append(self.node2vec_walk(
+                        walk_length=walk_length, start_node=v))
+        return walks
+    
+    def simulate_walks(self, num_walks, walk_length, workers=1, verbose=0):
+
+        G = self.G
+
+        nodes = list(G.nodes())         # nodes 包含了图上的所有节点
+
+        # 通过并行的方式加速路径采样
+        # 使用开源实现：在采用多进程进行加速时，需要最大限度地减少进程频繁创建与销毁的开销
+        results = Parallel(n_jobs=workers, verbose=verbose)(
+            delayed(self._simulate_walks)(nodes, num, walk_length) for num in 
+            partition_num(num_walks, workers)
+        )
+
+        walks = list(itertools.chain(*results))
+
+        return walks
 
     def node2vec_walk(self, walk_length, start_node):
 
@@ -113,36 +146,6 @@ class RandomWalker:
             else:
                 break
         return walk
-
-    def simulate_walks(self, num_walks, walk_length, workers=1, verbose=0):
-
-        G = self.G
-
-        nodes = list(G.nodes())
-
-        results = Parallel(n_jobs=workers, verbose=verbose, )(
-            delayed(self._simulate_walks)(nodes, num, walk_length) for num in
-            partition_num(num_walks, workers))
-
-        walks = list(itertools.chain(*results))
-
-        return walks
-
-    def _simulate_walks(self, nodes, num_walks, walk_length, ):
-        walks = []
-        for _ in range(num_walks):
-            random.shuffle(nodes)
-            for v in nodes:
-                if self.p == 1 and self.q == 1:
-                    walks.append(self.deepwalk_walk(
-                        walk_length=walk_length, start_node=v))
-                elif self.use_rejection_sampling:
-                    walks.append(self.node2vec_walk2(
-                        walk_length=walk_length, start_node=v))
-                else:
-                    walks.append(self.node2vec_walk(
-                        walk_length=walk_length, start_node=v))
-        return walks
 
     def get_alias_edge(self, t, v):
         """
